@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "Example camera",
+  "device": "lab/camera/1",
+  "attributes": [
+    {
+      "name": "frame",
+      "kind": "image",
+      "label": "Intensity",
+      "unit": "counts",
+      "x": {"origin": 0.0, "step": 6.5, "unit": "µm", "label": "X"},
+      "y": {"origin": 0.0, "step": 6.5, "unit": "µm", "label": "Y"}
+    },
+    {
+      "name": "profile",
+      "kind": "signal",
+      "label": "Mean intensity",
+      "unit": "counts",
+      "x": {"origin": 0.0, "step": 6.5, "unit": "µm", "label": "X"}
+    }
+  ],
+  "trigger": {"command": "Snap"},
+  "reception": "polling",
+  "polling_interval_ms": 200,
+  "timeout_ms": 3000,
+  "buffer_size": 32
+}

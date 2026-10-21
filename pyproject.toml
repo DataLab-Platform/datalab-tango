@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools >= 77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datalab-tango"
+version = "0.1.0"
+description = "Observe and acquire TANGO device attributes in DataLab"
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+dependencies = ["datalab-platform >= 1.4, < 2", "pytango >= 9.5"]
+keywords = ["datalab", "datalab-plugin", "tango", "acquisition", "instrument"]
+
+[project.urls]
+Homepage = "https://github.com/DataLab-Platform/datalab-tango"
+Issues = "https://github.com/DataLab-Platform/datalab-tango/issues"
+
+[project.entry-points."datalab.plugins"]
+datalab_tango = "datalab_tango.adapters.desktop:TangoPlugin"
+
+[project.optional-dependencies]
+test = ["build >= 1.2", "pytest", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+datalab_tango = ["profiles/*.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
