@@ -1,4 +1,4 @@
-# TANGO Instruments
+# <img src="src/datalab_tango/icons/tango.svg" alt="" width="48" align="absmiddle"> TANGO Instruments
 
 A [DataLab](https://datalab-platform.com/) plugin to observe [TANGO](https://www.tango-controls.org/) device attributes live and acquire them as signals or images, ready for DataLab's processing.
 
