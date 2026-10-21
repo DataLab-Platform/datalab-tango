@@ -27,7 +27,7 @@ test = ["build >= 1.2", "pytest", "ruff"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-datalab_tango = ["profiles/*.json"]
+datalab_tango = ["profiles/*.json", "icons/*.svg"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]

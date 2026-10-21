@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import resources
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +14,7 @@ from sigima.objects import get_experimental_source
 from support.fake_backend import FakeBackend, FakeDevice, write_profile
 
 from datalab_tango import PLUGIN_ID, __version__
-from datalab_tango.adapters.desktop import TangoPlugin
+from datalab_tango.adapters.desktop import PLUGIN_ICON, TangoPlugin
 from datalab_tango.instrument import TangoInstrument
 
 
@@ -26,6 +27,15 @@ def test_plugin_descriptor() -> None:
     )
     (tool,) = TangoPlugin.TOOLS
     assert (tool.instrument, tool.object_type) == ("tango_instrument", None)
+
+
+def test_plugin_icon() -> None:
+    """The plugin, its welcome tile and its instrument use the shipped icon."""
+    package, path = PLUGIN_ICON.split(":")
+    assert resources.files(package).joinpath(path).is_file()
+    assert TangoPlugin.PLUGIN_INFO.icon == PLUGIN_ICON
+    assert [tile.icon for tile in TangoPlugin.get_welcome_tiles()] == [PLUGIN_ICON]
+    assert [tool.icon for tool in TangoPlugin.get_tools()] == [PLUGIN_ICON]
 
 
 def test_instrument_window_acquires_into_workspace(

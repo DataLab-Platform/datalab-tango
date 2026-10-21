@@ -12,3 +12,4 @@ First version of the TANGO Instruments plugin.
 - Origin of each acquired object in its `experimental_source` metadata (device, attribute, times, quality, profile); integer counts converted exactly.
 - Connection opened with the instrument window and released when it closes, including on plugin reload and DataLab exit; device calls never run in DataLab's user interface thread.
 - Simulated oscilloscope and camera served by `python -m datalab_tango.simulation`, with their profiles, to try the plugin without hardware.
+- Plugin icon, shown on its welcome page tile and its instrument tool.
