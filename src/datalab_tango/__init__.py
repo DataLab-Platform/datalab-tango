@@ -1,7 +1,8 @@
 """DataLab plugin package."""
 
 PLUGIN_DESCRIPTION = (
-    "Observe TANGO device attributes live and acquire them as signals or images"
+    "Example plugin: observe TANGO device attributes live and acquire them as "
+    "signals or images"
 )
 PLUGIN_ID = "org.datalab.tango"
 PLUGIN_NAME = "TANGO Instruments"

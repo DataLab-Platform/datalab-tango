@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "datalab-tango"
 version = "0.1.0"
-description = "Observe and acquire TANGO device attributes in DataLab"
+description = "Example DataLab plugin: observe and acquire TANGO device attributes in DataLab"
 readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 requires-python = ">=3.9"
 dependencies = ["datalab-platform >= 1.4, < 2", "pytango >= 9.5"]
-keywords = ["datalab", "datalab-plugin", "tango", "acquisition", "instrument"]
+keywords = ["datalab", "datalab-plugin", "example", "tango", "acquisition", "instrument"]
+classifiers = ["Development Status :: 2 - Pre-Alpha"]
 
 [project.urls]
 Homepage = "https://github.com/DataLab-Platform/datalab-tango"

@@ -2,7 +2,7 @@
 
 A [DataLab](https://datalab-platform.com/) plugin to observe [TANGO](https://www.tango-controls.org/) device attributes live and acquire them as signals or images, ready for DataLab's processing.
 
-> **Status: Alpha.** Validated with simulated devices served by PyTango. Real devices are described by profiles, to be validated on site.
+> **Example plugin.** This plugin shows how DataLab can work with TANGO-controlled instruments. It is a demonstration, not a finished or supported feature: its scope is limited to what is described below, it has been validated only with simulated devices served by PyTango (real devices are described by profiles, untested so far), and its interface may change without notice.
 
 ## What it does
 
