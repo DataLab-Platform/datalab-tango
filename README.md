@@ -44,6 +44,14 @@ A profile is a JSON file describing one device. Site-specific values (device nam
 
 The packaged [example profile](src/datalab_tango/profiles/example_camera.json) is a starting point.
 
+## Trying without hardware
+
+```bash
+python -m datalab_tango.simulation profiles
+```
+
+This starts a TANGO device server without database, on this computer, with a simulated oscilloscope and a simulated camera acquiring continuously, and writes their profiles in the `profiles` folder: open one of them in **TANGO instrument...**. The devices use the simulators of the Pulse & Transient and Camera characterization plugins when these are installed, and simple synthetic data otherwise. Stop the server with Ctrl+C.
+
 ## Installation
 
 The plugin needs DataLab 1.4 or later (not released yet) and PyTango. PyTango is a compiled package: install the plugin with pip or conda in the Python environment of DataLab. The plugin catalog of DataLab, which installs pure-Python plugins only, cannot install it.

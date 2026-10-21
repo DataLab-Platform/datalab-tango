@@ -21,13 +21,14 @@ adapters -> instrument -> core
 - `core` holds the connection layer. `profile` validates device profiles; `reception` stores received values in a bounded, thread-safe buffer and reads attributes periodically; `backend` connects to devices (`PyTangoBackend`, the only module importing PyTango, inside its methods); `session` combines them for one attribute; `convert` turns values into Sigima signals and images with their `experimental_source`. The core does not import DataLab.
 - `instrument.py` exposes an attribute session as a DataLab instrument (`PluginInstrument`): DataLab calls it outside its user interface thread, opens it with its window and closes it with the window.
 - `adapters/desktop.py` declares the plugin and its tool. There is no DataLab-Web adapter.
+- `simulation.py` serves simulated devices for trials and tests; no other module imports it.
 
 `tests/unit/test_architecture.py` checks the layer boundaries.
 
 ## Tests
 
 - `tests/unit`: profiles, reception, conversion and instrument, with a fake device (`tests/support/fake_backend.py`).
-- `tests/integration`: a simulated device served by PyTango's `DeviceTestContext` in another process (`tests/support/devices.py`), reached through the TANGO protocol, and the instrument window in DataLab. These tests receive values by periodic reads: change events depend on the network setup of the test machine.
+- `tests/integration`: simulated devices served by PyTango's test contexts in another process (`tests/support/devices.py` and the shipped `simulation` module), reached through the TANGO protocol, and the instrument window in DataLab. These tests receive values by periodic reads: change events depend on the network setup of the test machine. With the Pulse & Transient and Camera characterization plugins on the Python path, the simulated devices use their simulators.
 
 ## Branches
 

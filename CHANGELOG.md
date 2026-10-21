@@ -11,3 +11,4 @@ First version of the TANGO Instruments plugin.
 - Device profiles (JSON): device address, attributes, units and axis calibrations, trigger command, reception by periodic reads or change events, timeouts and buffer size.
 - Origin of each acquired object in its `experimental_source` metadata (device, attribute, times, quality, profile); integer counts converted exactly.
 - Connection opened with the instrument window and released when it closes, including on plugin reload and DataLab exit; device calls never run in DataLab's user interface thread.
+- Simulated oscilloscope and camera served by `python -m datalab_tango.simulation`, with their profiles, to try the plugin without hardware.

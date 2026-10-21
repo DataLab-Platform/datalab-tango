@@ -20,6 +20,8 @@ HOST_MODULES = (
 )
 #: Only the device connection may import PyTango, and only when connecting
 TANGO_MODULE = "core/backend.py"
+#: Standalone simulated devices, which no other module may import
+SIMULATION_MODULE = "simulation.py"
 
 
 def _module_imports(filename: Path, top_level_only: bool = False) -> set[str]:
@@ -74,10 +76,14 @@ def test_pytango_is_imported_only_when_connecting() -> None:
     violations = []
     for filename in sorted(PACKAGE_ROOT.rglob("*.py")):
         relative = filename.relative_to(PACKAGE_ROOT).as_posix()
+        if relative == SIMULATION_MODULE:
+            continue
         imports = _module_imports(filename)
         top_level = _module_imports(filename, top_level_only=True)
         if relative != TANGO_MODULE and any(_matches(n, ("tango",)) for n in imports):
             violations.append(relative)
         if any(_matches(name, ("tango",)) for name in top_level):
             violations.append(f"{relative} (module level)")
+        if f"{PACKAGE_NAME}.simulation" in imports:
+            violations.append(f"{relative} imports the simulation")
     assert not violations, "\n".join(violations)
