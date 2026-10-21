@@ -10,6 +10,10 @@ python -m ruff check .
 python -m pytest
 ```
 
+## Trying the Plugin in DataLab
+
+With DataLab 1.4 or later, add this project folder in **Plugins > Configure plugins... > Plugin settings**, then reload the plugins: DataLab loads the plugin from `src/datalab_tango/adapters/desktop.py`, without installing the project (see [DataLab-Platform/DataLab#412](https://github.com/DataLab-Platform/DataLab/pull/412)). PyTango must be installed in DataLab's environment to connect to devices.
+
 ## Architecture
 
 Dependencies point inward:
