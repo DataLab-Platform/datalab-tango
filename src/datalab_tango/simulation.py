@@ -10,7 +10,8 @@ When the DataLab characterization plugins are installed, the devices use
 their simulators (``datalab_pulse_characterization`` oscilloscope traces,
 ``datalab_camera_characterization`` sensor model); otherwise they generate
 simple synthetic data. Both devices acquire continuously, and acquire at once
-when their trigger command runs.
+when their trigger command runs; this command returns the time stamp of the
+value it acquired, so that DataLab tells it apart from free-running ones.
 """
 
 from __future__ import annotations
@@ -74,12 +75,19 @@ def _camera_frame(number: int) -> np.ndarray:
 
 
 class _FreeRunningDevice(Device):
-    """Device acquiring continuously in a thread, and at once on trigger."""
+    """Device acquiring continuously in a thread, and at once on trigger.
+
+    Acquisitions run one at a time. A triggered acquisition cancels the
+    free-running one due during it, so that its value stays available for at
+    least :data:`FREE_RUN_INTERVAL`.
+    """
 
     def init_device(self) -> None:
         super().init_device()
         self._lock = threading.Lock()
+        self._acquisition = threading.RLock()
         self._number = 0
+        self._triggers = 0
         self._stamp = 0.0
         self._acquire()
         self._stop = threading.Event()
@@ -90,14 +98,38 @@ class _FreeRunningDevice(Device):
         self._stop.set()
 
     def _free_run(self) -> None:
-        while not self._stop.wait(FREE_RUN_INTERVAL):
-            self._acquire()
+        while True:
+            with self._lock:
+                triggers = self._triggers
+            if self._stop.wait(FREE_RUN_INTERVAL):
+                return
+            self._acquire(triggers)
 
-    def _acquire(self) -> None:
-        value = self._measure(self._number + 1)
-        with self._lock:
-            self._number += 1
-            self._value, self._stamp = value, time.time()
+    def _acquire(self, free_run_after: int | None = None) -> float | None:
+        """Acquire a new value and return its time stamp.
+
+        Args:
+            free_run_after: for a free-running acquisition, number of triggered
+             acquisitions when it was scheduled: it is cancelled (None returned)
+             if another one ran since
+        """
+        with self._acquisition:
+            with self._lock:
+                if free_run_after is not None and free_run_after != self._triggers:
+                    return None
+                self._number += 1
+                number = self._number
+            value = self._measure(number)
+            with self._lock:
+                self._value, self._stamp = value, time.time()
+                return self._stamp
+
+    def _trigger(self) -> float:
+        """Acquire a value now and return its time stamp."""
+        with self._acquisition:
+            with self._lock:
+                self._triggers += 1
+            return self._acquire()
 
     def _measure(self, number: int):
         raise NotImplementedError
@@ -123,10 +155,10 @@ class SimulatedOscilloscope(_FreeRunningDevice):
         """Last trace of channel 1."""
         return self._read()
 
-    @command
-    def Trigger(self) -> None:  # pylint: disable=invalid-name
-        """Acquire a trace now."""
-        self._acquire()
+    @command(dtype_out=float)
+    def Trigger(self) -> float:  # pylint: disable=invalid-name
+        """Acquire a trace now; return its time stamp."""
+        return self._trigger()
 
 
 class SimulatedCamera(_FreeRunningDevice):
@@ -140,10 +172,10 @@ class SimulatedCamera(_FreeRunningDevice):
         """Last frame."""
         return self._read()
 
-    @command
-    def Snap(self) -> None:  # pylint: disable=invalid-name
-        """Acquire a frame now."""
-        self._acquire()
+    @command(dtype_out=float)
+    def Snap(self) -> float:  # pylint: disable=invalid-name
+        """Acquire a frame now; return its time stamp."""
+        return self._trigger()
 
 
 def write_profiles(folder: Path, scope_address: str, camera_address: str) -> list:
@@ -163,7 +195,7 @@ def write_profiles(folder: Path, scope_address: str, camera_address: str) -> lis
                     "x": {"origin": t0, "step": dt, "unit": "ns", "label": "Time"},
                 }
             ],
-            "trigger": {"command": "Trigger"},
+            "trigger": {"command": "Trigger", "returns": "time_stamp"},
             "polling_interval_ms": 100,
         },
         "simulated_camera.json": {
@@ -171,7 +203,7 @@ def write_profiles(folder: Path, scope_address: str, camera_address: str) -> lis
             "name": "Simulated camera",
             "device": camera_address,
             "attributes": [{"name": "frame", "kind": "image", "unit": "DN"}],
-            "trigger": {"command": "Snap"},
+            "trigger": {"command": "Snap", "returns": "time_stamp"},
             "polling_interval_ms": 100,
         },
     }

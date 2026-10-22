@@ -70,10 +70,11 @@ def test_preview_and_latest_acquisition(tmp_path: Path, device: FakeDevice) -> N
         instrument.close()
 
 
-def test_trigger_acquires_the_triggered_value(
+def test_trigger_takes_the_first_value_after_the_command(
     tmp_path: Path, device: FakeDevice
 ) -> None:
-    """The trigger command runs, and the value measured after it is acquired."""
+    """The trigger command runs, and the value received after it is acquired,
+    recorded as identified only by its arrival after the command."""
     profile = _write_profile(tmp_path / "p.json", reception="events")
     instrument = _instrument(device, profile, mode="trigger", attribute="spectrum")
     try:
@@ -84,7 +85,85 @@ def test_trigger_acquires_the_triggered_value(
         assert np.array_equal(signal.y, np.arange(5) + 1)
         assert np.array_equal(signal.x, [0.0, 2.0, 4.0, 6.0, 8.0])
         assert signal.xunit == "eV"
-        assert get_experimental_source(signal)["conversions"] == ["int32 -> float64"]
+        source = get_experimental_source(signal)
+        assert source["conversions"] == ["int32 -> float64"]
+        assert source["details"]["trigger"] == {
+            "command": "Snap",
+            "synchronization": "first_after_command",
+        }
+    finally:
+        instrument.close()
+
+
+def test_trigger_without_time_stamp_may_take_another_value(
+    tmp_path: Path, device: FakeDevice
+) -> None:
+    """Without the time stamp of the triggered value, a value measured by the
+    device on its own during the command is taken instead: the origin of the
+    acquired object tells that its identity is not guaranteed."""
+    device.spontaneous_values = 1
+    profile = _write_profile(tmp_path / "p.json", reception="events")
+    instrument = _instrument(device, profile, mode="trigger", attribute="spectrum")
+    try:
+        (signal,) = instrument.acquire().objects
+        assert device.counter == 2
+        assert np.array_equal(signal.y, np.arange(5) + 1), "spontaneous value"
+        trigger = get_experimental_source(signal)["details"]["trigger"]
+        assert trigger["synchronization"] == "first_after_command"
+    finally:
+        instrument.close()
+
+
+@pytest.mark.parametrize("reception", ["events", "polling"])
+def test_trigger_with_time_stamp_takes_the_triggered_value(
+    tmp_path: Path, device: FakeDevice, reception: str
+) -> None:
+    """When the trigger command returns the time stamp of its value, this value
+    is acquired, whatever the values measured by the device on its own."""
+    device.spontaneous_values = 2
+    device.snap_returns_time = True
+    trigger = {"command": "Snap", "returns": "time_stamp"}
+    profile = _write_profile(tmp_path / "p.json", reception=reception, trigger=trigger)
+    instrument = _instrument(device, profile, mode="trigger", attribute="spectrum")
+    try:
+        (signal,) = instrument.acquire().objects
+        assert device.counter == 3
+        assert np.array_equal(signal.y, np.arange(5) + 3), "triggered value"
+        source = get_experimental_source(signal)
+        assert source["details"]["trigger"] == {
+            "command": "Snap",
+            "synchronization": "time_stamp",
+        }
+    finally:
+        instrument.close()
+
+
+@pytest.mark.parametrize("result", [None, "done", True, float("nan")])
+def test_trigger_not_returning_a_time_stamp(
+    tmp_path: Path, device: FakeDevice, result: object
+) -> None:
+    """A trigger command not returning the time stamp told by the profile is
+    reported, instead of acquiring a value."""
+    device.snap_result = result
+    trigger = {"command": "Snap", "returns": "time_stamp"}
+    profile = _write_profile(tmp_path / "p.json", reception="events", trigger=trigger)
+    instrument = _instrument(device, profile, mode="trigger")
+    try:
+        with pytest.raises(ValueError, match="not a time stamp"):
+            instrument.acquire()
+    finally:
+        instrument.close()
+
+
+def test_triggered_value_not_received(tmp_path: Path, device: FakeDevice) -> None:
+    """A triggered value that never arrives ends the acquisition with an error."""
+    device.snap_result = 123.0
+    trigger = {"command": "Snap", "returns": "time_stamp"}
+    profile = _write_profile(tmp_path / "p.json", reception="events", trigger=trigger)
+    instrument = _instrument(device, profile, mode="trigger", timeout=0.1)
+    try:
+        with pytest.raises(ValueError, match="Triggered value not received"):
+            instrument.acquire()
     finally:
         instrument.close()
 

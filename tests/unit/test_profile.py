@@ -44,6 +44,15 @@ def test_example_profile() -> None:
     assert (frame.x.step, frame.x.unit) == (6.5, "µm")
     assert profile.get_attribute("profile").kind is AttributeKind.SIGNAL
     assert profile.trigger.command == "Snap"
+    assert profile.trigger.returns is None
+
+
+def test_trigger_returning_time_stamp() -> None:
+    """A trigger may tell that its command returns the time stamp of its value."""
+    trigger = {"command": "Snap", "argument": 2, "returns": "time_stamp"}
+    profile = profile_from_dict(_profile(trigger=trigger))
+    assert (profile.trigger.command, profile.trigger.argument) == ("Snap", 2)
+    assert profile.trigger.returns == "time_stamp"
 
 
 def test_defaults() -> None:
@@ -70,6 +79,7 @@ def test_defaults() -> None:
         ({"reception": "push"}, "'reception' must be"),
         ({"buffer_size": 0}, "'buffer_size' must be a positive integer"),
         ({"trigger": {"command": "Snap", "argument": [1]}}, "JSON scalar"),
+        ({"trigger": {"command": "Snap", "returns": "id"}}, "'returns' must be"),
         ({"extra": 1}, "unknown fields"),
         (
             {"attributes": [{"name": "a", "kind": "image"}] * 2},

@@ -70,8 +70,11 @@ class AttributeSession:
             self._connected = False
             self.backend.disconnect()
 
-    def trigger(self) -> None:
+    def trigger(self) -> object:
         """Run the trigger command of the profile.
+
+        Returns:
+            Value returned by the command
 
         Raises:
             ValueError: if the profile has no trigger, or if the command failed
@@ -79,4 +82,4 @@ class AttributeSession:
         trigger = self.profile.trigger
         if trigger is None:
             raise ValueError(f"Profile '{self.profile.name}' has no trigger command")
-        self.backend.command(trigger.command, trigger.argument)
+        return self.backend.command(trigger.command, trigger.argument)

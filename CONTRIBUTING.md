@@ -7,8 +7,13 @@ Install the project in editable mode, in a Python environment where DataLab 1.4 
 ```bash
 python -m pip install -e ".[test]"
 python -m ruff check .
+python -m ruff format --check .
 python -m pytest
 ```
+
+## Continuous Integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on Linux and Windows for each push to `develop` or `main` and each pull request; no TANGO database or hardware is needed. DataLab 1.4 is not released yet: the workflow installs DataLab, Sigima and SigimaX from the `develop` branch of their repositories, or from another branch when run manually (**Run workflow**, `stack-ref` input).
 
 ## Trying the Plugin in DataLab
 
@@ -32,7 +37,7 @@ adapters -> instrument -> core
 ## Tests
 
 - `tests/unit`: profiles, reception, conversion and instrument, with a fake device (`tests/support/fake_backend.py`).
-- `tests/integration`: simulated devices served by PyTango's test contexts in another process (`tests/support/devices.py` and the shipped `simulation` module), reached through the TANGO protocol, and the instrument window in DataLab. These tests receive values by periodic reads: change events depend on the network setup of the test machine. With the Pulse & Transient and Camera characterization plugins on the Python path, the simulated devices use their simulators.
+- `tests/integration`: simulated devices served by PyTango's test contexts in another process (`tests/support/devices.py` and the shipped `simulation` module), reached through the TANGO protocol, and the instrument window in DataLab. These tests receive values by periodic reads: change events depend on the network setup of the test machine. The device servers are given 60 s to start, PyTango's default being too short on some machines. With the Pulse & Transient and Camera characterization plugins on the Python path, the simulated devices use their simulators.
 
 ## Branches
 

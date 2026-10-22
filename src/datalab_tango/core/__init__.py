@@ -3,6 +3,7 @@
 from .backend import DeviceBackend, PyTangoBackend
 from .convert import reading_to_object
 from .profile import (
+    TRIGGER_RETURNS,
     AttributeKind,
     AttributeProfile,
     AxisCalibration,
@@ -12,10 +13,12 @@ from .profile import (
     load_profile,
     profile_from_dict,
 )
-from .reception import FrameBuffer, PollingReceiver, Reading
+from .reception import STAMP_TOLERANCE, FrameBuffer, PollingReceiver, Reading
 from .session import AttributeSession
 
 __all__ = [
+    "STAMP_TOLERANCE",
+    "TRIGGER_RETURNS",
     "AttributeKind",
     "AttributeProfile",
     "AttributeSession",

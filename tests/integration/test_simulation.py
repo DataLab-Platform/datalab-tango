@@ -6,6 +6,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from sigima.objects import get_experimental_source
+from support import SERVER_STARTUP_TIMEOUT
 
 tango_test_context = pytest.importorskip("tango.test_context")
 
@@ -26,7 +28,9 @@ def fixture_profiles(tmp_path_factory):
             "devices": [{"name": simulation.CAMERA_NAME}],
         },
     )
-    with tango_test_context.MultiDeviceTestContext(devices, process=True) as context:
+    with tango_test_context.MultiDeviceTestContext(
+        devices, process=True, timeout=SERVER_STARTUP_TIMEOUT
+    ) as context:
         yield simulation.write_profiles(
             tmp_path_factory.mktemp("profiles"),
             context.get_device_access(simulation.SCOPE_NAME),
@@ -57,11 +61,30 @@ def test_free_running_oscilloscope(profiles: list[Path]) -> None:
 
 
 def test_triggered_camera_frame(profiles: list[Path]) -> None:
-    """A triggered frame is acquired from the simulated camera."""
+    """A triggered frame is acquired from the simulated camera, identified by its
+    time stamp."""
     instrument = _instrument(profiles[1], mode="trigger")
     try:
         (image,) = instrument.acquire().objects
         assert image.data.shape == simulation.CAMERA_SHAPE
         assert image.zunit == "DN"
+        trigger = get_experimental_source(image)["details"]["trigger"]
+        assert trigger == {"command": "Snap", "synchronization": "time_stamp"}
+    finally:
+        instrument.close()
+
+
+def test_triggers_of_free_running_oscilloscope(profiles: list[Path]) -> None:
+    """Successive triggers of a free-running device each acquire a new trace,
+    the one measured by the trigger, not a free-running one."""
+    instrument = _instrument(profiles[0], mode="trigger", timeout=10.0)
+    try:
+        stamps = []
+        for _index in range(5):
+            (signal,) = instrument.acquire().objects
+            source = get_experimental_source(signal)
+            assert source["details"]["trigger"]["synchronization"] == "time_stamp"
+            stamps.append(source["timestamps"]["source"])
+        assert len(set(stamps)) == len(stamps)
     finally:
         instrument.close()

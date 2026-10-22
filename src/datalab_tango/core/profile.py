@@ -18,6 +18,7 @@ from typing import Any, Union
 
 __all__ = [
     "PROFILE_VERSION",
+    "TRIGGER_RETURNS",
     "AttributeKind",
     "AttributeProfile",
     "AxisCalibration",
@@ -30,6 +31,9 @@ __all__ = [
 
 #: Version of the profile file layout
 PROFILE_VERSION = 1
+
+#: Values of the ``returns`` field of a trigger: what its command returns
+TRIGGER_RETURNS = ("time_stamp",)
 
 JsonScalar = Union[str, int, float, bool, None]
 
@@ -81,10 +85,20 @@ class AttributeProfile:
 
 @dataclasses.dataclass(frozen=True)
 class TriggerProfile:
-    """Command triggering a measurement, with its optional argument."""
+    """Command triggering a measurement.
+
+    Args:
+        command: TANGO command name
+        argument: argument of the command, if any
+        returns: ``"time_stamp"`` if the command returns the device time stamp
+         (s since the epoch) of the value it measured, so that this value is
+         told apart from others received meanwhile; None if it returns nothing
+         useful
+    """
 
     command: str
     argument: JsonScalar = None
+    returns: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -229,11 +243,17 @@ def profile_from_dict(data: Any) -> DeviceProfile:
         raise ValueError("Profile: attribute names must be unique")
     trigger = None
     if data.get("trigger") is not None:
-        _check_keys(data["trigger"], {"command", "argument"}, "trigger")
+        _check_keys(data["trigger"], {"command", "argument", "returns"}, "trigger")
         argument = data["trigger"].get("argument")
         if isinstance(argument, (dict, list)):
             raise ValueError("trigger: 'argument' must be a JSON scalar")
-        trigger = TriggerProfile(_text(data["trigger"], "command", "trigger"), argument)
+        returns = data["trigger"].get("returns")
+        if returns is not None and returns not in TRIGGER_RETURNS:
+            choices = ", ".join(f"'{value}'" for value in TRIGGER_RETURNS)
+            raise ValueError(f"trigger: 'returns' must be {choices} or absent")
+        trigger = TriggerProfile(
+            _text(data["trigger"], "command", "trigger"), argument, returns
+        )
     try:
         reception = Reception(data.get("reception", Reception.POLLING.value))
     except ValueError as exc:

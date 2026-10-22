@@ -34,3 +34,9 @@ class SimulatedCamera(Device):
         """Acquire a new frame."""
         self._shots += 1
         self._stamp = time.time()
+
+    @command(dtype_out=float)
+    def SnapTimed(self) -> float:  # pylint: disable=invalid-name
+        """Acquire a new frame; return its time stamp."""
+        self.Snap()
+        return self._stamp

@@ -48,6 +48,43 @@ def test_wait_for_values_pushed_later() -> None:
     assert (len(kept), lost) == (3, 0)
 
 
+def test_wait_for_stamp_ignores_other_values() -> None:
+    """The value of the given time stamp is returned, received before or during
+    the wait, among other values; values received before ``after`` do not count."""
+    buffer = FrameBuffer(8)
+    buffer.push(Reading.create([0], 10.0))
+    after = buffer.count
+    buffer.push(Reading.create([1], 11.0))
+    buffer.push(Reading.create([2], 12.0))
+    # Device time stamp truncated to the millisecond, as returned by the command
+    reading = buffer.wait_for_stamp(after, 12.0004, 1.0)
+    assert (int(reading.value[0]), reading.number) == (2, 3)
+    with pytest.raises(TimeoutError, match="values received meanwhile: 2\\)"):
+        buffer.wait_for_stamp(after, 10.0, 0.05)
+
+    def push() -> None:
+        time.sleep(0.02)
+        buffer.push(Reading.create([3], 13.0))
+        buffer.push(Reading.create([4], 14.0))
+
+    thread = threading.Thread(target=push)
+    thread.start()
+    reading = buffer.wait_for_stamp(after, 14.0, 5.0)
+    thread.join()
+    assert int(reading.value[0]) == 4
+
+
+def test_wait_for_stamp_reports_lost_values() -> None:
+    """A value pushed out of a full buffer is reported as possibly lost."""
+    buffer = FrameBuffer(2)
+    after = buffer.count
+    for index in range(4):
+        buffer.push(Reading.create([index], float(index)))
+    buffer.push_error("Device timeout")
+    with pytest.raises(TimeoutError, match="2 lost.*Device timeout"):
+        buffer.wait_for_stamp(after, 0.0, 0.05)
+
+
 def test_readings_are_read_only_copies() -> None:
     """Received values cannot change once stored."""
     source = [1.0, 2.0]

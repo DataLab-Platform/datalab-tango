@@ -12,6 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from sigima.objects import get_experimental_source
+from support import SERVER_STARTUP_TIMEOUT
 
 tango_test_context = pytest.importorskip("tango.test_context")
 
@@ -25,11 +27,13 @@ def fixture_camera():
         SimulatedCamera,  # pylint: disable=import-outside-toplevel
     )
 
-    with tango_test_context.DeviceTestContext(SimulatedCamera, process=True) as proxy:
+    with tango_test_context.DeviceTestContext(
+        SimulatedCamera, process=True, timeout=SERVER_STARTUP_TIMEOUT
+    ) as proxy:
         yield proxy.dev_name()
 
 
-def _profile(path: Path, address: str) -> str:
+def _profile(path: Path, address: str, trigger: dict | None = None) -> str:
     """Write the profile of the simulated camera."""
     data = {
         "version": 1,
@@ -39,7 +43,7 @@ def _profile(path: Path, address: str) -> str:
             {"name": "frame", "kind": "image", "unit": "counts"},
             {"name": "spectrum", "kind": "signal"},
         ],
-        "trigger": {"command": "Snap"},
+        "trigger": trigger or {"command": "Snap"},
         "polling_interval_ms": 20,
         "timeout_ms": 3000,
     }
@@ -65,6 +69,25 @@ def test_acquisition_from_device(tmp_path: Path, camera: str) -> None:
         instrument.settings.mode = "latest"
         (signal,) = instrument.acquire().objects
         assert np.allclose(signal.y, np.linspace(0.0, 1.0, 5) + shots + 1)
+    finally:
+        instrument.close()
+
+
+def test_triggered_value_identified_by_time_stamp(tmp_path: Path, camera: str) -> None:
+    """A trigger command returning the time stamp of its value through the TANGO
+    protocol identifies this value among the received ones."""
+    trigger = {"command": "SnapTimed", "returns": "time_stamp"}
+    instrument = TangoInstrument()
+    instrument.settings.profile = _profile(tmp_path / "camera.json", camera, trigger)
+    instrument.settings.mode = "trigger"
+    instrument.open()
+    try:
+        shots = int(instrument.preview().objects[0].data[1, 1])
+        for shot in range(shots + 1, shots + 4):
+            (image,) = instrument.acquire().objects
+            assert image.data[1, 1] == shot
+            source = get_experimental_source(image)
+            assert source["details"]["trigger"]["synchronization"] == "time_stamp"
     finally:
         instrument.close()
 

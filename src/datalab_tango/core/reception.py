@@ -17,7 +17,12 @@ from collections.abc import Callable
 
 import numpy as np
 
-__all__ = ["FrameBuffer", "PollingReceiver", "Reading"]
+__all__ = ["STAMP_TOLERANCE", "FrameBuffer", "PollingReceiver", "Reading"]
+
+#: Largest difference between two device time stamps of the same value (s): TANGO
+#: time stamps of attribute values may be truncated to the millisecond (e.g. on
+#: Windows), while a command returns the full value
+STAMP_TOLERANCE = 1e-3
 
 
 @dataclasses.dataclass(frozen=True)
@@ -122,6 +127,48 @@ class FrameBuffer:
             last = after + count
             kept = [r for r in self._readings if after < r.number <= last]
             return kept, count - len(kept)
+
+    def wait_for_stamp(self, after: int, stamp: float, timeout: float) -> Reading:
+        """Wait for the value of a given device time stamp, ignoring other values.
+
+        Args:
+            after: number of the last value received before waiting
+            stamp: device time stamp of the expected value (s since the epoch),
+             matched within :data:`STAMP_TOLERANCE`
+            timeout: maximum waiting time (s)
+
+        Returns:
+            Value received after the given one, with this time stamp
+
+        Raises:
+            TimeoutError: if no such value was received before the timeout
+        """
+
+        def find() -> Reading | None:
+            for reading in self._readings:
+                if (
+                    reading.number > after
+                    and reading.source_time is not None
+                    and abs(reading.source_time - stamp) <= STAMP_TOLERANCE
+                ):
+                    return reading
+            return None
+
+        with self._condition:
+            found = self._condition.wait_for(find, timeout)
+            if found is None:
+                received = self._count - after
+                kept = sum(1 for reading in self._readings if reading.number > after)
+                details = [f"values received meanwhile: {received}"]
+                if received > kept:
+                    details.append(f"{received - kept} lost, the buffer being full")
+                if self._error:
+                    details.append(f"last error: {self._error}")
+                raise TimeoutError(
+                    f"value of time stamp {stamp:.6f} not received in {timeout:g} s "
+                    f"({'; '.join(details)})"
+                )
+            return found
 
 
 class PollingReceiver:

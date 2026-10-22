@@ -32,9 +32,20 @@ def _iso(timestamp: float) -> str:
 
 
 def reading_to_object(
-    reading: Reading, profile: DeviceProfile, attribute: AttributeProfile, title: str
+    reading: Reading,
+    profile: DeviceProfile,
+    attribute: AttributeProfile,
+    title: str,
+    details: dict[str, object] | None = None,
 ) -> SignalObj | ImageObj:
     """Return the signal or image holding a received value.
+
+    Args:
+        reading: received value
+        profile: device profile
+        attribute: profile of the attribute
+        title: title of the object
+        details: additional details of the origin of the value (e.g. trigger)
 
     Raises:
         ValueError: if the value does not have the dimensions of its kind
@@ -89,6 +100,7 @@ def reading_to_object(
             "profile": profile.name,
             "quality": reading.quality,
             "reading": reading.number,
+            **(details or {}),
         },
     )
     set_experimental_source(obj, source)

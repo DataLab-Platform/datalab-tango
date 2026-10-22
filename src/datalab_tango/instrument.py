@@ -5,10 +5,18 @@ copies received values into the workspace: the last one, the one measured
 after running the trigger command of the profile, or the next values received.
 Received values are kept by a bounded buffer: an acquisition of several values
 fails, instead of silently missing some, if values were lost.
+
+A triggered value is identified by its device time stamp when the trigger
+command returns it (``"returns": "time_stamp"`` in the profile): other values
+received meanwhile are ignored. Otherwise, the first value received after the
+command started is taken, which may not be the triggered one (free-running
+device, value delivered late); the origin of the acquired object tells which.
 """
 
 from __future__ import annotations
 
+import math
+import numbers
 import os.path as osp
 from collections.abc import Callable
 
@@ -40,6 +48,25 @@ TANGO_INSTRUMENT_TOOL = PluginTool(
 
 #: Longest wait for a first value before a preview reports that none arrived (s)
 FIRST_VALUE_TIMEOUT = 2.0
+
+
+def _time_stamp(value: object, command: str) -> float:
+    """Return the time stamp returned by a trigger command.
+
+    Raises:
+        ValueError: if the command did not return a time stamp
+    """
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, numbers.Real)
+        or not math.isfinite(value)
+    ):
+        raise ValueError(
+            f"Trigger command '{command}' returned {value!r}, not a time stamp: "
+            "check the 'returns' field of the profile trigger"
+        )
+    return float(value)
+
 
 MODES = (
     ("latest", "Last received value"),
@@ -151,28 +178,22 @@ class TangoInstrument(PluginInstrument):
         session = self._get_session()
         timeout = float(self.settings.timeout)
         mode = self.settings.mode
+        details = None
         if mode == "latest":
             readings = [self._latest(session, timeout)]
+        elif mode == "trigger":
+            reading, trigger = self._trigger(session, timeout)
+            readings, details = [reading], {"trigger": trigger}
         else:
-            count = int(self.settings.count) if mode == "series" else 1
-            after = session.buffer.count
-            if mode == "trigger":
-                session.trigger()
-            try:
-                readings, lost = session.buffer.wait_for(after, count, timeout)
-            except TimeoutError as exc:
-                raise ValueError(f"Acquisition incomplete: {exc}") from exc
-            if lost:
-                raise ValueError(
-                    f"{lost} of {count} values were lost: reduce the number of "
-                    "values, or increase the buffer size of the profile"
-                )
+            count = int(self.settings.count)
+            readings = self._next(session, session.buffer.count, count, timeout)
         objects = [
             reading_to_object(
                 reading,
                 session.profile,
                 session.attribute,
                 self._title(session, reading),
+                details,
             )
             for reading in readings
         ]
@@ -182,3 +203,49 @@ class TangoInstrument(PluginInstrument):
             f"acquisition {self._acquisition_count:03d}",
             objects,
         )
+
+    @staticmethod
+    def _next(
+        session: AttributeSession, after: int, count: int, timeout: float
+    ) -> list[Reading]:
+        """Return the values received after a given one, refusing lost values."""
+        try:
+            readings, lost = session.buffer.wait_for(after, count, timeout)
+        except TimeoutError as exc:
+            raise ValueError(f"Acquisition incomplete: {exc}") from exc
+        if lost:
+            raise ValueError(
+                f"{lost} of {count} values were lost: reduce the number of "
+                "values, or increase the buffer size of the profile"
+            )
+        return readings
+
+    def _trigger(
+        self, session: AttributeSession, timeout: float
+    ) -> tuple[Reading, dict[str, str]]:
+        """Run the trigger command, and return the value measured after it.
+
+        If the profile tells that the command returns the time stamp of its
+        measurement, the value of this time stamp is returned: values received
+        meanwhile (free-running device, values delivered late) are ignored.
+        Otherwise, the first value received after the command started is
+        returned: it may be another value than the triggered one.
+
+        Returns:
+            Value, and how it was identified (``synchronization``: ``time_stamp``
+             or ``first_after_command``)
+        """
+        after = session.buffer.count
+        result = session.trigger()
+        trigger = session.profile.trigger
+        if trigger.returns == "time_stamp":
+            stamp = _time_stamp(result, trigger.command)
+            try:
+                reading = session.buffer.wait_for_stamp(after, stamp, timeout)
+            except TimeoutError as exc:
+                raise ValueError(f"Triggered value not received: {exc}") from exc
+            synchronization = "time_stamp"
+        else:
+            (reading,) = self._next(session, after, 1, timeout)
+            synchronization = "first_after_command"
+        return reading, {"command": trigger.command, "synchronization": synchronization}

@@ -9,7 +9,8 @@ A [DataLab](https://datalab-platform.com/) plugin to observe [TANGO](https://www
 - **TANGO instrument...** opens a DataLab instrument window: a live view of the selected attribute, refreshed in **Live** mode, and its settings.
 - A spectrum (`SPECTRUM` attribute) becomes a signal, an image (`IMAGE` attribute) an image, with the units and axis calibrations of the device profile. Integer counts are kept exactly.
 - **Acquire** copies values into a new group of the workspace, in one of three modes: the last received value, the value measured after running the trigger command of the profile, or the next received values (a series fails, instead of silently missing values, if some were lost).
-- Each acquired object records its origin in its `experimental_source` metadata: device, attribute, device and reception times, quality and profile. A saved workspace reopens without the device or the plugin.
+- A triggered value is guaranteed to be the one measured by the trigger command when this command returns the time stamp of its value (`"returns": "time_stamp"` in the profile): values received meanwhile are ignored. Otherwise, the first value received after the command started is taken: with a free-running device, or a value delivered late, it may be another one. The origin of the acquired object tells which (`trigger.synchronization`: `time_stamp` or `first_after_command`).
+- Each acquired object records its origin in its `experimental_source` metadata: device, attribute, device and reception times, quality, profile and, for a triggered value, the trigger command and how its value was identified. A saved workspace reopens without the device or the plugin.
 - DataLab calls the device outside its user interface thread: a slow or unreachable device does not freeze DataLab, and the connection is released when the window closes.
 
 ## Device profiles
@@ -37,8 +38,8 @@ A profile is a JSON file describing one device. Site-specific values (device nam
 | --- | --- | --- |
 | `device` | TANGO device name (with `TANGO_HOST`), or full address `tango://host:port/domain/family/member` | required |
 | `attributes` | Attributes shown and acquired: `kind` is `signal` or `image`; `label`, `unit`, and axis calibrations `x`/`y` (`origin`, `step`, `unit`, `label`) are optional | required |
-| `trigger` | Command (and optional scalar `argument`) measuring a new value | none |
-| `reception` | `polling`: periodic reads, a value being kept when its device time stamp changes; `events`: change events pushed by the device | `polling` |
+| `trigger` | Command (and optional scalar `argument`) measuring a new value; `"returns": "time_stamp"` if the command returns the device time stamp (s since the epoch) of the value it measured, so that this value is told apart from the others (time stamps compared within 1 ms: TANGO may truncate them to the millisecond) | none |
+| `reception` | `polling`: periodic reads, a value being kept when its device time stamp changes, which requires the device to date its values (an attribute not dated by the device gets a new time stamp at every read, so that every read is kept as a new value: use `events` for it); `events`: change events pushed by the device | `polling` |
 | `polling_interval_ms`, `timeout_ms` | Interval between reads, timeout of device calls | 200, 3000 |
 | `buffer_size` | Number of received values kept until they are acquired | 16 |
 
@@ -50,7 +51,7 @@ The packaged [example profile](src/datalab_tango/profiles/example_camera.json) i
 python -m datalab_tango.simulation profiles
 ```
 
-This starts a TANGO device server without database, on this computer, with a simulated oscilloscope and a simulated camera acquiring continuously, and writes their profiles in the `profiles` folder: open one of them in **TANGO instrument...**. The devices use the simulators of the Pulse & Transient and Camera characterization plugins when these are installed, and simple synthetic data otherwise. Stop the server with Ctrl+C.
+This starts a TANGO device server without database, on this computer, with a simulated oscilloscope and a simulated camera acquiring continuously, and writes their profiles in the `profiles` folder: open one of them in **TANGO instrument...**. Their trigger commands return the time stamp of the value they measure, so that a triggered acquisition is never mistaken for a free-running one. The devices use the simulators of the Pulse & Transient and Camera characterization plugins when these are installed, and simple synthetic data otherwise. Stop the server with Ctrl+C.
 
 ## Installation
 

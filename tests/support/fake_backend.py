@@ -38,7 +38,14 @@ def write_profile(path: Path, **changes) -> str:
 
 class FakeDevice:
     """Device whose ``frame`` (image) and ``spectrum`` attributes change at each
-    ``step``, e.g. when its ``Snap`` command runs."""
+    ``step``, e.g. when its ``Snap`` command runs.
+
+    Attributes:
+        spontaneous_values: number of values the device measures on its own
+         while ``Snap`` runs, before the value of ``Snap`` (free-running device)
+        snap_returns_time: True if ``Snap`` returns the time stamp of its value
+        snap_result: value returned by ``Snap`` otherwise
+    """
 
     def __init__(self, dtype=np.uint16) -> None:
         self.dtype = dtype
@@ -46,6 +53,9 @@ class FakeDevice:
         self.time = 1_000_000.0
         self.connections = 0
         self.unreachable = False
+        self.spontaneous_values = 0
+        self.snap_returns_time = False
+        self.snap_result: object = None
         self.subscriptions: dict[int, tuple[str, object]] = {}
         self._ids = itertools.count(1)
         self._lock = threading.Lock()
@@ -80,7 +90,8 @@ class FakeBackend(DeviceBackend):
         self.device.connections += 1
 
     def read(self, attribute: str) -> Reading:
-        return Reading.create(self.device.value(attribute), self.device.time)
+        with self.device._lock:  # pylint: disable=protected-access
+            return Reading.create(self.device.value(attribute), self.device.time)
 
     def subscribe(self, attribute: str, callback) -> object:
         handle = next(self.device._ids)  # pylint: disable=protected-access
@@ -94,8 +105,12 @@ class FakeBackend(DeviceBackend):
     def command(self, name: str, argument=None) -> object:
         if name != "Snap":
             raise ValueError(f"Command '{name}' failed: unknown command")
+        for _index in range(self.device.spontaneous_values):
+            self.device.step()
         self.device.step()
-        return None
+        if self.device.snap_returns_time:
+            return self.device.time
+        return self.device.snap_result
 
     def disconnect(self) -> None:
         self.device.connections -= 1
