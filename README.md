@@ -54,7 +54,11 @@ This starts a TANGO device server without database, on this computer, with a sim
 
 ## Installation
 
-The plugin needs DataLab 1.4 or later (not released yet) and PyTango. PyTango is a compiled package: install the plugin with pip or conda in the Python environment of DataLab. The plugin catalog of DataLab, which installs pure-Python plugins only, cannot install it.
+The plugin needs DataLab 1.4 or later (not released yet) and PyTango. The plugin wheel itself is pure Python; PyTango is a native dependency. DataLab's dependency-enabled Desktop installer can install it, including in the standalone application, when the catalog supplies compatible PyTango wheels and their transitive dependencies. A complete local catalog works without Internet access: no existing package versions are changed, and added dependencies are activated after restarting DataLab.
+
+To prepare a local catalog, put the plugin wheel in a folder and run `datalab-plugin catalog prepare <folder>` from the target reference environment with Internet access. Distribute the resulting `catalog.json`, plugin wheel and `dependencies` folder together. For **Install from file...**, keep the `dependencies` folder next to the plugin wheel. Native wheels must match the Python/ABI/platform of DataLab; incompatible existing versions are refused and system prerequisites are not installed automatically. Uninstalling the plugin keeps its shared dependencies.
+
+Installing in DataLab's Python environment with pip or conda remains available:
 
 ```bash
 pip install git+https://github.com/DataLab-Platform/datalab-tango.git
