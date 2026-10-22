@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      stack-ref:
+        description: Branch of DataLab, Sigima and SigimaX to test with
+        default: develop
+
+permissions:
+  contents: read
+
+env:
+  # DataLab 1.4 is not released yet: DataLab, Sigima and SigimaX are installed
+  # from this branch of their repositories (use PyPI once DataLab 1.4 is out)
+  STACK_REF: ${{ inputs.stack-ref || 'develop' }}
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Qt system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb x11-utils libgl1 libegl1 libxkbcommon-x11-0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0
+
+      - name: Install DataLab and the plugin
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "sigima @ git+https://github.com/DataLab-Platform/sigima.git@${STACK_REF}" \
+            "sigimax @ git+https://github.com/DataLab-Platform/SigimaX.git@${STACK_REF}" \
+            "datalab-platform[qt] @ git+https://github.com/DataLab-Platform/DataLab.git@${STACK_REF}"
+          python -m pip install -e ".[test]" pytest-xvfb
+
+      - name: Lint
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+
+      - name: Test
+        run: python -m pytest -v
