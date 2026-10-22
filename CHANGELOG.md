@@ -13,5 +13,6 @@ First version of the TANGO Instruments example plugin: a demonstration of DataLa
 - Origin of each acquired object in its `experimental_source` metadata (device, attribute, times, quality, profile); integer counts converted exactly.
 - Connection opened with the instrument window and released when it closes, including on plugin reload and DataLab exit; device calls never run in DataLab's user interface thread.
 - Simulated oscilloscope and camera served by `python -m datalab_tango.simulation`, with their profiles, to try the plugin without hardware; their trigger commands return the time stamp of the value they measure.
+- Fixed simulated device startup failing on slower machines, especially on Windows, by allowing 60 s instead of PyTango's default of 7 s.
 - Plugin icon, shown on its welcome page tile and its instrument tool.
 - Continuous integration: lint and tests on Linux and Windows, with the simulated devices served by PyTango.

@@ -53,6 +53,8 @@ python -m datalab_tango.simulation profiles
 
 This starts a TANGO device server without database, on this computer, with a simulated oscilloscope and a simulated camera acquiring continuously, and writes their profiles in the `profiles` folder: open one of them in **TANGO instrument...**. Their trigger commands return the time stamp of the value they measure, so that a triggered acquisition is never mistaken for a free-running one. The devices use the simulators of the Pulse & Transient and Camera characterization plugins when these are installed, and simple synthetic data otherwise. Stop the server with Ctrl+C.
 
+The server is given a 60 s startup timeout, since PyTango's default of 7 s can be too short, especially on Windows. Wait for the profile paths to be printed before connecting from DataLab.
+
 ## Installation
 
 The plugin needs DataLab 1.4 or later (not released yet) and PyTango. The plugin wheel itself is pure Python; PyTango is a native dependency. DataLab's dependency-enabled Desktop installer can install it, including in the standalone application, when the catalog supplies compatible PyTango wheels and their transitive dependencies. A complete local catalog works without Internet access: no existing package versions are changed, and added dependencies are activated after restarting DataLab.

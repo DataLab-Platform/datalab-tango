@@ -222,7 +222,7 @@ def main(folder: str = ".") -> None:
         {"class": SimulatedOscilloscope, "devices": [{"name": SCOPE_NAME}]},
         {"class": SimulatedCamera, "devices": [{"name": CAMERA_NAME}]},
     )
-    with MultiDeviceTestContext(devices, process=True) as context:
+    with MultiDeviceTestContext(devices, process=True, timeout=60.0) as context:
         paths = write_profiles(
             Path(folder),
             context.get_device_access(SCOPE_NAME),
