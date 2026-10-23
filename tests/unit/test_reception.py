@@ -7,7 +7,10 @@ import time
 
 import pytest
 
-from datalab_tango.core import FrameBuffer, PollingReceiver, Reading
+from datalab_tango.core import FrameBuffer, PollingReceiver, Reading, stamp_matches
+
+#: Realistic device time stamp (s since the epoch), a whole number of milliseconds
+EPOCH = 1_790_000_000.0
 
 
 def test_wait_for_counts_lost_values() -> None:
@@ -71,6 +74,39 @@ def test_wait_for_stamp_ignores_other_values() -> None:
     thread.start()
     reading = buffer.wait_for_stamp(after, 14.0, 5.0)
     thread.join()
+    assert int(reading.value[0]) == 4
+
+
+def test_stamp_matches_within_resolution() -> None:
+    """A time stamp truncated to the microsecond matches only within a microsecond,
+    and one truncated to the millisecond only the millisecond following it."""
+    assert stamp_matches(EPOCH + 0.000123, EPOCH + 0.0001234)
+    assert not stamp_matches(EPOCH + 0.000123, EPOCH + 0.000623)
+    assert not stamp_matches(EPOCH + 0.000623, EPOCH + 0.000123)
+    assert stamp_matches(EPOCH + 0.001, EPOCH + 0.0019)
+    assert not stamp_matches(EPOCH + 0.001, EPOCH + 0.0021)
+    assert not stamp_matches(EPOCH + 0.001, EPOCH + 0.0006)
+
+
+def test_wait_for_stamp_tells_values_apart_within_a_millisecond() -> None:
+    """A value measured on its own less than 1 ms before or after the triggered
+    one is not taken for it, unless both time stamps are truncated to the same
+    millisecond."""
+    buffer = FrameBuffer(8)
+    after = buffer.count
+    buffer.push(Reading.create([1], EPOCH + 0.000200))
+    buffer.push(Reading.create([2], EPOCH + 0.000700))
+    reading = buffer.wait_for_stamp(after, EPOCH + 0.0007004, 1.0)
+    assert int(reading.value[0]) == 2
+    # Time stamps truncated to the millisecond: a value measured less than 1 ms
+    # after the triggered one, which was missed, is not taken for it
+    buffer = FrameBuffer(8)
+    after = buffer.count
+    buffer.push(Reading.create([3], EPOCH + 0.001))
+    with pytest.raises(TimeoutError, match="values received meanwhile: 1\\)"):
+        buffer.wait_for_stamp(after, EPOCH + 0.0006, 0.05)
+    buffer.push(Reading.create([4], EPOCH + 0.002))
+    reading = buffer.wait_for_stamp(after, EPOCH + 0.0024, 1.0)
     assert int(reading.value[0]) == 4
 
 

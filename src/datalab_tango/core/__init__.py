@@ -13,11 +13,10 @@ from .profile import (
     load_profile,
     profile_from_dict,
 )
-from .reception import STAMP_TOLERANCE, FrameBuffer, PollingReceiver, Reading
+from .reception import FrameBuffer, PollingReceiver, Reading, stamp_matches
 from .session import AttributeSession
 
 __all__ = [
-    "STAMP_TOLERANCE",
     "TRIGGER_RETURNS",
     "AttributeKind",
     "AttributeProfile",
@@ -34,4 +33,5 @@ __all__ = [
     "load_profile",
     "profile_from_dict",
     "reading_to_object",
+    "stamp_matches",
 ]

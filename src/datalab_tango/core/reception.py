@@ -17,12 +17,32 @@ from collections.abc import Callable
 
 import numpy as np
 
-__all__ = ["STAMP_TOLERANCE", "FrameBuffer", "PollingReceiver", "Reading"]
+__all__ = ["FrameBuffer", "PollingReceiver", "Reading", "stamp_matches"]
 
-#: Largest difference between two device time stamps of the same value (s): TANGO
-#: time stamps of attribute values may be truncated to the millisecond (e.g. on
-#: Windows), while a command returns the full value
-STAMP_TOLERANCE = 1e-3
+#: Resolution of the time stamps of TANGO attribute values (s): microsecond, or
+#: millisecond when PyTango stores them truncated to the millisecond (Windows)
+STAMP_RESOLUTIONS = (1e-6, 1e-3)
+
+#: Margin for the rounding errors of time stamps converted to floats (s)
+STAMP_MARGIN = 1e-6
+
+
+def stamp_matches(source_time: float, stamp: float) -> bool:
+    """Tell whether an attribute value time stamp is the one of a device time
+    stamp, the former being truncated to its resolution.
+
+    The resolution is the millisecond if the attribute time stamp is a whole number
+    of milliseconds, the microsecond otherwise. Two values whose time stamps fall
+    in the same millisecond on a device truncating them cannot be told apart.
+
+    Args:
+        source_time: time stamp of an attribute value (s since the epoch)
+        stamp: full device time stamp, e.g. returned by a command (s since the epoch)
+    """
+    milliseconds = source_time * 1e3
+    truncated = abs(milliseconds - round(milliseconds)) < STAMP_MARGIN * 1e3
+    resolution = STAMP_RESOLUTIONS[1] if truncated else STAMP_RESOLUTIONS[0]
+    return -STAMP_MARGIN <= stamp - source_time < resolution + STAMP_MARGIN
 
 
 @dataclasses.dataclass(frozen=True)
@@ -134,7 +154,8 @@ class FrameBuffer:
         Args:
             after: number of the last value received before waiting
             stamp: device time stamp of the expected value (s since the epoch),
-             matched within :data:`STAMP_TOLERANCE`
+             matched as told by :func:`stamp_matches`; if several values
+             match it, the first received is returned
             timeout: maximum waiting time (s)
 
         Returns:
@@ -149,7 +170,7 @@ class FrameBuffer:
                 if (
                     reading.number > after
                     and reading.source_time is not None
-                    and abs(reading.source_time - stamp) <= STAMP_TOLERANCE
+                    and stamp_matches(reading.source_time, stamp)
                 ):
                     return reading
             return None
