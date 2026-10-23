@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+Python 3.10 or later is required.
+
 First version of the TANGO Instruments example plugin: a demonstration of DataLab with TANGO-controlled instruments, not a finished or supported feature.
 
 - **TANGO instrument** tool: live view of a device attribute (spectrum as a signal, image as an image) in DataLab's instrument window, with calibrated axes and units, and acquisition into a new workspace group.

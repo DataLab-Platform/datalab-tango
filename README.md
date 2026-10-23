@@ -6,6 +6,8 @@ A [DataLab](https://datalab-platform.com/) plugin to observe [TANGO](https://www
 
 ## What it does
 
+The plugin requires Python 3.10 or later; the standalone DataLab application supplies its own interpreter.
+
 - **TANGO instrument...** opens a DataLab instrument window: a live view of the selected attribute, refreshed in **Live** mode, and its settings.
 - A spectrum (`SPECTRUM` attribute) becomes a signal, an image (`IMAGE` attribute) an image, with the units and axis calibrations of the device profile. Integer counts are kept exactly.
 - **Acquire** copies values into a new group of the workspace, in one of three modes: the last received value, the value measured after running the trigger command of the profile, or the next received values (a series fails, instead of silently missing values, if some were lost).
