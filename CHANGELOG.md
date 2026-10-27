@@ -8,7 +8,8 @@ Python 3.10 or later is required.
 
 First version of the TANGO Instruments example plugin: a demonstration of DataLab with TANGO-controlled instruments, not a finished or supported feature.
 
-- **TANGO instrument** tool: live view of a device attribute (spectrum as a signal, image as an image) in DataLab's instrument window, with calibrated axes and units, and acquisition into a new workspace group.
+- **TANGO instrument** tool: live view of a device attribute (spectrum as a signal, image as an image) in DataLab's instrument window, with calibrated axes and units, and acquisition into the workspace.
+- Acquisitions accumulate in the current group of the panel by default, instead of creating a group for each of them; the **New group** option of the instrument window restores one group per acquisition, and DataLab remembers this choice.
 - Acquisition modes: last received value, value measured after the trigger command of the profile, or series of the next received values, refused if values were lost.
 - Triggered value identified by its device time stamp when the trigger command returns it (`"returns": "time_stamp"` in the profile), instead of taking the first value received after the command, which may be a value measured on its own by a free-running device; values measured within the same millisecond cannot be told apart when the device time stamps are truncated to the millisecond (e.g. on Windows); the origin of a triggered value records how it was identified.
 - Device profiles (JSON): device address, attributes, units and axis calibrations, trigger command, reception by periodic reads or change events, timeouts and buffer size.

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from datalab.config import Conf
 from datalab.env import execenv
 from datalab.plugins import PluginCapability
 from datalab.tests import datalab_test_app_context
@@ -41,13 +42,16 @@ def test_plugin_icon() -> None:
 def test_instrument_window_acquires_into_workspace(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The window shows the device, acquires into a new group, then disconnects."""
+    """The window shows the device, acquires into a group, then disconnects.
+
+    Acquisitions accumulate in the current group, unless "New group" is on."""
     device = FakeDevice()
     instrument = TangoInstrument(lambda: FakeBackend(device))
     instrument.settings.profile = write_profile(tmp_path / "bench.json")
     instrument.settings.mode = "trigger"
     with (
         execenv.context(unattended=True),
+        Conf.instrument_new_group.context({}),
         datalab_test_app_context(console=False, exec_loop=False) as main,
     ):
         plugin = TangoPlugin()
@@ -57,6 +61,7 @@ def test_instrument_window_acquires_into_workspace(
         assert window.wait_until_idle()
         assert len(window.items) == 1
         assert device.connections == 1
+        assert not window.new_group_box.isChecked()
 
         window.acquire()
         assert window.wait_until_idle()
@@ -65,6 +70,18 @@ def test_instrument_window_acquires_into_workspace(
         assert group.title == "Bench camera - frame - acquisition 001"
         assert np.all(image.data == 1)
         assert get_experimental_source(image)["entry"] == "frame"
+
+        window.acquire()
+        assert window.wait_until_idle()
+        assert main.imagepanel.objmodel.get_groups() == [group]
+        assert len(group.get_objects()) == 2
+
+        window.new_group_box.setChecked(True)
+        window.acquire()
+        assert window.wait_until_idle()
+        groups = main.imagepanel.objmodel.get_groups()
+        assert len(groups) == 2
+        assert groups[-1].title == "Bench camera - frame - acquisition 003"
 
         window.close()
         assert window.wait_closed()

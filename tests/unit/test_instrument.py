@@ -55,6 +55,8 @@ def test_preview_and_latest_acquisition(tmp_path: Path, device: FakeDevice) -> N
         image = acquisition.objects[0]
         assert image.data[0, 0] == 7
         assert acquisition.group_title.startswith("Bench camera - frame - acquisition")
+        # Single values accumulate in the current group by default
+        assert instrument.new_group is False
         source = get_experimental_source(image)
         assert (source["kind"], source["location"], source["entry"]) == (
             "tango",

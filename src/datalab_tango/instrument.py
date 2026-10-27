@@ -3,8 +3,10 @@
 The live view shows the last value received from the device. **Acquire**
 copies received values into the workspace: the last one, the one measured
 after running the trigger command of the profile, or the next values received.
-Received values are kept by a bounded buffer: an acquisition of several values
-fails, instead of silently missing some, if values were lost.
+Acquisitions go to the current group of the panel, unless the user turns on the
+**New group** option of the instrument window. Received values are kept by a
+bounded buffer: an acquisition of several values fails, instead of silently
+missing some, if values were lost.
 
 A triggered value is identified by its device time stamp when the trigger
 command returns it (``"returns": "time_stamp"`` in the profile): other values
@@ -102,6 +104,9 @@ class TangoInstrument(PluginInstrument):
     """
 
     live_interval_ms = 200
+    # Acquisitions are usually single values: they accumulate in the current
+    # group, unless the user turns on the "New group" option
+    new_group = False
 
     def __init__(
         self, backend_factory: Callable[[], DeviceBackend] = PyTangoBackend
