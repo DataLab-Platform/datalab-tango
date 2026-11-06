@@ -13,7 +13,7 @@ python -m pytest
 
 ## Continuous Integration
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on Linux and Windows for each push to `develop` or `main` and each pull request; no TANGO database or hardware is needed. DataLab 1.4 is not released yet: the workflow installs DataLab, Sigima and SigimaX from the `develop` branch of their repositories, or from another branch when run manually (**Run workflow**, `stack-ref` input).
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks on Linux and Windows for each push to `develop` or `main` and each pull request; no TANGO database or hardware is needed. It uses the published DataLab 1.4.0, Sigima 1.4.0 and SigimaX 1.1.0 by default; a manual run can select a development branch with the optional `stack-ref` input. A release tag runs these checks before attaching the wheel. MSI and standalone installations are not qualified.
 
 ## Trying the Plugin in DataLab
 

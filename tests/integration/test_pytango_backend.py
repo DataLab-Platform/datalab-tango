@@ -27,10 +27,11 @@ def fixture_camera():
         SimulatedCamera,  # pylint: disable=import-outside-toplevel
     )
 
-    with tango_test_context.DeviceTestContext(
+    context = tango_test_context.DeviceTestContext(
         SimulatedCamera, process=True, timeout=SERVER_STARTUP_TIMEOUT
-    ) as proxy:
-        yield proxy.dev_name()
+    )
+    with context:
+        yield context.get_device_access()
 
 
 def _profile(path: Path, address: str, trigger: dict | None = None) -> str:

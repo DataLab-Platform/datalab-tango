@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
-Python 3.10 or later is required.
+Python 3.10 or later and PyTango 9.5.1 or later are required. PyTango 9.5.0 is excluded because its Windows wheel can be installed with NumPy 2 even though its native extension is incompatible.
 
 First version of the TANGO Instruments example plugin: a demonstration of DataLab with TANGO-controlled instruments, not a finished or supported feature.
 
@@ -18,4 +18,4 @@ First version of the TANGO Instruments example plugin: a demonstration of DataLa
 - Simulated oscilloscope and camera served by `python -m datalab_tango.simulation`, with their profiles, to try the plugin without hardware; their trigger commands return the time stamp of the value they measure.
 - Fixed simulated device startup failing on slower machines, especially on Windows, by allowing 60 s instead of PyTango's default of 7 s.
 - Plugin icon, shown on its welcome page tile and its instrument tool.
-- Continuous integration: lint and tests on Linux and Windows, with the simulated devices served by PyTango.
+- Continuous integration: lint and tests on Linux and Windows, with simulated devices and PyTango 9.5.1/NumPy 1, PyTango 10.0.0/NumPy 2 and the latest PyTango compatible with NumPy 2.

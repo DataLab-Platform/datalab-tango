@@ -1,8 +1,8 @@
 """DataLab plugin package."""
 
 PLUGIN_DESCRIPTION = (
-    "Example plugin: observe TANGO device attributes live and acquire them as "
-    "signals or images"
+    "Demonstration plugin: observe and acquire TANGO device attributes in a Python "
+    "environment; MSI and standalone DataLab are not qualified"
 )
 PLUGIN_ID = "org.datalab.tango"
 PLUGIN_NAME = "TANGO Instruments"
