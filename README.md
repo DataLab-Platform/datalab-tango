@@ -6,7 +6,7 @@ A [DataLab](https://datalab-platform.com/) plugin to observe [TANGO](https://www
 
 ## What it does
 
-The plugin requires Python 3.10 or later; the standalone DataLab application supplies its own interpreter.
+The demonstration targets a Python environment with Python 3.10 or later. MSI and standalone DataLab installations are not qualified.
 
 - **TANGO instrument...** opens a DataLab instrument window: a live view of the selected attribute, refreshed in **Live** mode, and its settings.
 - A spectrum (`SPECTRUM` attribute) becomes a signal, an image (`IMAGE` attribute) an image, with the units and axis calibrations of the device profile. Integer counts are kept exactly.
@@ -59,9 +59,13 @@ The server is given a 60 s startup timeout, since PyTango's default of 7 s can b
 
 ## Installation
 
-The plugin needs DataLab 1.4 or later (not released yet) and PyTango. The plugin wheel itself is pure Python; PyTango is a native dependency. DataLab's dependency-enabled Desktop installer can install it, including in the standalone application, when the catalog supplies compatible PyTango wheels and their transitive dependencies. A complete local catalog works without Internet access: no existing package versions are changed, and added dependencies are activated after restarting DataLab.
+The plugin needs DataLab 1.4 or later and PyTango 9.5.1 or later in a Python environment. The plugin wheel itself is pure Python; PyTango is a native dependency. Only Python environments are in the qualification scope; MSI and standalone DataLab installations are not qualified.
 
-To prepare a local catalog, put the plugin wheel in a folder and run `datalab-plugin catalog prepare <folder>` from the target reference environment with Internet access. Distribute the resulting `catalog.json`, plugin wheel and `dependencies` folder together. For **Install from file...**, keep the `dependencies` folder next to the plugin wheel. Native wheels must match the Python/ABI/platform of DataLab; incompatible existing versions are refused and system prerequisites are not installed automatically. Uninstalling the plugin keeps its shared dependencies.
+On Windows with CPython 3.11, simulated-device acquisitions have been tested with PyTango 9.5.1 and NumPy 1.26.4, and with PyTango 10.0.0 and 10.0.4 and NumPy 2.4.6. PyTango 9.5.1 requires NumPy below 2; PyTango 9.5.0 is excluded because its Windows wheel permits NumPy 2 in its metadata but its native extension is incompatible with it. Other platforms and combinations must be qualified separately.
+
+To prepare a local catalog for a Python environment, put the plugin wheel in a folder and run `datalab-plugin catalog prepare <folder>` from that target environment with Internet access. Distribute the resulting `catalog.json`, plugin wheel and `dependencies` folder together. For **Install from file...**, keep the `dependencies` folder next to the plugin wheel. Native wheels must match the Python/ABI/platform of DataLab; incompatible existing versions are refused and system prerequisites are not installed automatically. Uninstalling the plugin keeps its shared dependencies.
+
+On Windows, very long plugin-store paths can prevent PyTango's native DLLs from loading. If this occurs, install PyTango directly in a Python environment with a shorter path. PyTango has its own LGPL license and includes third-party native libraries; anyone redistributing those dependencies must check their applicable licenses and notices separately from this plugin's BSD license.
 
 Installing in DataLab's Python environment with pip or conda remains available:
 
