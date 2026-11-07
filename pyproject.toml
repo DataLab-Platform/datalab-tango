@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datalab-tango"
-version = "0.1.0"
+version = "0.1.1rc1"
 description = "Demonstration DataLab plugin: acquire TANGO device attributes; Python only, MSI/standalone not qualified"
 readme = "README.md"
 license = "BSD-3-Clause"
