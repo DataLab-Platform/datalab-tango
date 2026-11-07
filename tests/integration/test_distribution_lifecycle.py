@@ -83,7 +83,7 @@ print(json.dumps({
         text=True,
     )
     result = json.loads(completed.stdout)
-    assert result["version"] == __version__ == "0.1.0"
+    assert result["version"] == __version__
     assert result["requires_python"] == ">=3.10"
     assert result["groups"] == ["datalab.plugins"]
     assert result["entry_point"] == "datalab_tango"
