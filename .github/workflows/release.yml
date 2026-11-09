@@ -175,6 +175,8 @@ jobs:
               print(f"```yaml\n{release}\n```")
           else:
               repository = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}"
-              print(f"To list the plugin, add `{entry}` to {catalog} (pull request), completing its capabilities:\n")
-              print(f'```yaml\nid: {plugin_id}\nname: "{name}"\nrepository: {repository}\ncapabilities: []\nreleases:\n{release}\n```')
+              icon = f"https://raw.githubusercontent.com/{os.environ['GITHUB_REPOSITORY']}/develop/src/datalab_tango/icons/tango.svg"
+              # PyTango is installed by users in DataLab's Python environment
+              print(f"To list the plugin, add `{entry}` to {catalog} (pull request):\n")
+              print(f'```yaml\nid: {plugin_id}\nname: "{name}"\nrepository: {repository}\nicon: {icon}\ncapabilities: [application]\nkeywords: [TANGO, instrument, acquisition, PyTango]\nenvironment_requirements: [pytango]\nreleases:\n{release}\n```')
           EOF
