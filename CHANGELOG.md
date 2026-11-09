@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## [0.1.0] - 2026-11-07
 
 Python 3.10 or later and PyTango 9.5.1 or later are required. PyTango 9.5.0 is excluded because its Windows wheel can be installed with NumPy 2 even though its native extension is incompatible.
 

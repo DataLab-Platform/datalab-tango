@@ -7,7 +7,7 @@ A release takes two steps, both run by [`.github/workflows/release.yml`](.github
 1. **Prepare**: pushing a release tag checks the tag, runs the tests, builds the wheel, attests its build provenance and creates a **draft** GitHub release with the wheel and its `SHA256SUMS`. Nothing is published at this stage.
 2. **Publish**: when a maintainer publishes the draft release, its wheel is checked (checksum and attestation), and the summary of the run gives the entry of the [DataLab plugin catalog](https://github.com/DataLab-Platform/plugins), with the SHA-256 digest of the checked wheel. A release created by hand has no such file, so the check fails.
 
-DataLab users install the wheel of a release with **Plugins > Configure plugins... > From file**, or from the **Catalog** tab once the release is listed in the catalog.
+DataLab users install the wheel of a release with **Plugins > Configure plugins... > From file**, or from the **Catalog** tab once the release is listed in the catalog. In both cases, PyTango must be installed first in DataLab's Python environment: the catalog entry declares it in `environment_requirements`, and does not distribute it.
 
 ## Releasing a final version
 
@@ -26,7 +26,7 @@ DataLab users install the wheel of a release with **Plugins > Configure plugins.
 
 4. Follow the **Prepare vX.Y.Z** run in the [Actions](https://github.com/DataLab-Platform/datalab-tango/actions/workflows/release.yml) tab. When it succeeds, its summary links to the draft release.
 5. Review the draft release (title, description, wheel and `SHA256SUMS`), then click **Publish release**.
-6. Publishing starts the **Publish vX.Y.Z** run: once it succeeds, open a pull request on the [plugin catalog](https://github.com/DataLab-Platform/plugins) with the entry given in its summary.
+6. Publishing starts the **Publish vX.Y.Z** run: once it succeeds, open a pull request on the [plugin catalog](https://github.com/DataLab-Platform/plugins) with the entry given in its summary. Keep `environment_requirements: [pytango]` in the entry, unless PyTango is no longer a requirement of the plugin.
 
 ## Release candidates
 
