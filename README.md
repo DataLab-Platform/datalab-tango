@@ -9,6 +9,7 @@ A [DataLab](https://datalab-platform.com/) plugin to observe [TANGO](https://www
 The demonstration targets a Python environment with Python 3.10 or later. MSI and standalone DataLab installations are not qualified.
 
 - **TANGO instrument...** opens a DataLab instrument window: a live view of the selected attribute, refreshed in **Live** mode, and its settings.
+- **Simulated TANGO devices...** opens the same window on a simulated oscilloscope or camera, served on this computer while the window is open: the plugin can be tried without hardware nor command line (see [Trying without hardware](#trying-without-hardware)).
 - A spectrum (`SPECTRUM` attribute) becomes a signal, an image (`IMAGE` attribute) an image, with the units and axis calibrations of the device profile. Integer counts are kept exactly.
 - **Acquire** copies values into the workspace, in one of three modes: the last received value, the value measured after running the trigger command of the profile, or the next received values (a series fails, instead of silently missing values, if some were lost). Acquisitions accumulate in the current group of the panel; turn on the **New group** option of the instrument window to add each acquisition to a new group (DataLab remembers this choice).
 - A triggered value is identified as the one measured by the trigger command when this command returns the time stamp of its value (`"returns": "time_stamp"` in the profile): values received meanwhile are ignored, provided that their device time stamps differ from the triggered one by at least the resolution of the device time stamps (1 µs, or 1 ms when they are truncated to the millisecond, e.g. on Windows). Otherwise, the first value received after the command started is taken: with a free-running device, or a value delivered late, it may be another one. The origin of the acquired object tells which (`trigger.synchronization`: `time_stamp` or `first_after_command`).
@@ -49,13 +50,21 @@ The packaged [example profile](src/datalab_tango/profiles/example_camera.json) i
 
 ## Trying without hardware
 
+In DataLab, open **Simulated TANGO devices...** from the Applications panel or from the plugin's submenu of the **Plugins** menu: a TANGO device server without database starts on this computer, on a free port, with a simulated oscilloscope and a simulated camera acquiring continuously, and the instrument window shows the selected device live, as a real one. Choose the device and the acquisition mode in the settings, then **Acquire**. Starting the devices takes a few seconds, more on slower machines (DataLab waits up to 90 s).
+
+The device server runs in a child process while the window is open: it stops when the window closes, including when the plugins are reloaded and when DataLab quits, and by itself if DataLab ends abruptly. Its profiles are written in a temporary folder, removed when it stops.
+
+The trigger commands of the simulated devices return the time stamp of the value they measure, so that a triggered acquisition is not mistaken for a free-running one. The devices use the simulators of the Pulse & Transient and Camera characterization plugins when these are installed, and simple synthetic data otherwise.
+
+The same devices can be served from a command line, e.g. for another DataLab or another TANGO client:
+
 ```bash
 python -m datalab_tango.simulation profiles
 ```
 
-This starts a TANGO device server without database, on this computer, with a simulated oscilloscope and a simulated camera acquiring continuously, and writes their profiles in the `profiles` folder: open one of them in **TANGO instrument...**. Their trigger commands return the time stamp of the value they measure, so that a triggered acquisition is not mistaken for a free-running one. The devices use the simulators of the Pulse & Transient and Camera characterization plugins when these are installed, and simple synthetic data otherwise. Stop the server with Ctrl+C.
+This writes their profiles in the `profiles` folder: open one of them in **TANGO instrument...**. Stop the server with Ctrl+C. The server is given a 60 s startup timeout, since PyTango's default of 7 s can be too short, especially on Windows. Wait for the profile paths to be printed before connecting from DataLab.
 
-The server is given a 60 s startup timeout, since PyTango's default of 7 s can be too short, especially on Windows. Wait for the profile paths to be printed before connecting from DataLab.
+**Simulated TANGO devices...** runs this module with the Python interpreter of DataLab (windowless on Windows) and its import path, so it needs a Python environment. A standalone (MSI) DataLab, which is not qualified for this plugin, has no Python interpreter to run it: the window then tells to serve the devices with the command above, from a Python environment with PyTango.
 
 ## Installation
 

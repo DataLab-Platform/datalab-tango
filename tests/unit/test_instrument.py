@@ -9,10 +9,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from sigima.objects import ImageObj, SignalObj, get_experimental_source
-from support.fake_backend import FakeBackend, FakeDevice
+from support.fake_backend import FakeBackend, FakeDevice, FakeSimulatedDevices
 from support.fake_backend import write_profile as _write_profile
 
-from datalab_tango.instrument import TangoInstrument
+from datalab_tango.instrument import SimulatedTangoInstrument, TangoInstrument
 
 
 @pytest.fixture(name="device")
@@ -255,4 +255,62 @@ def test_user_facing_errors(tmp_path: Path, device: FakeDevice) -> None:
     with pytest.raises(ValueError, match="has no trigger command"):
         instrument.acquire()
     instrument.close()
+    assert device.connections == 0
+
+
+def test_simulated_devices_follow_the_instrument(
+    tmp_path: Path, device: FakeDevice
+) -> None:
+    """Opening the simulated instrument starts the devices and connects to the
+    selected one; closing it disconnects, then stops the devices."""
+    log: list[str] = []
+    instrument = SimulatedTangoInstrument(
+        lambda: FakeBackend(device), lambda: FakeSimulatedDevices(tmp_path, log)
+    )
+    assert instrument.settings.device == "oscilloscope"
+    assert instrument.settings.mode == "trigger"
+    assert instrument.devices is None
+    instrument.open()
+    try:
+        assert log == ["start"] and device.connections == 1
+        frame = instrument.preview()
+        assert isinstance(frame.objects[0], SignalObj)
+        assert "Simulated scope - spectrum" in frame.summary
+        instrument.settings.device = "camera"
+        frame = instrument.preview()
+        assert isinstance(frame.objects[0], ImageObj)
+        assert log == ["start"] and device.connections == 1
+    finally:
+        instrument.close()
+    assert log == ["start", "stop"] and device.connections == 0
+    assert instrument.devices is None
+    instrument.close()
+    assert log == ["start", "stop"]
+
+
+def test_simulated_devices_start_again_after_a_failure(
+    tmp_path: Path, device: FakeDevice
+) -> None:
+    """A failed start is reported, then retried by the next call; devices which
+    stopped unexpectedly are started again."""
+    log: list[str] = []
+    failures = [1]
+
+    def devices_factory() -> FakeSimulatedDevices:
+        devices = FakeSimulatedDevices(tmp_path, log, failures=failures[0])
+        failures[0] = 0
+        return devices
+
+    instrument = SimulatedTangoInstrument(lambda: FakeBackend(device), devices_factory)
+    try:
+        with pytest.raises(ValueError, match="did not start"):
+            instrument.open()
+        instrument.open()
+        assert log == ["start", "stop", "start"]
+        instrument.devices.running = False
+        instrument.preview()
+        assert log == ["start", "stop", "start", "stop", "start"]
+        assert device.connections == 1
+    finally:
+        instrument.close()
     assert device.connections == 0
