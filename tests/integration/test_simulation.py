@@ -12,7 +12,10 @@ from support import SERVER_STARTUP_TIMEOUT
 tango_test_context = pytest.importorskip("tango.test_context")
 
 from datalab_tango import simulation  # noqa: E402
-from datalab_tango.instrument import TangoInstrument  # noqa: E402
+from datalab_tango.instrument import (  # noqa: E402
+    SimulatedTangoInstrument,
+    TangoInstrument,
+)
 
 
 @pytest.fixture(name="profiles", scope="module")
@@ -88,3 +91,27 @@ def test_triggers_of_free_running_oscilloscope(profiles: list[Path]) -> None:
         assert len(set(stamps)) == len(stamps)
     finally:
         instrument.close()
+
+
+def test_simulated_devices_instrument() -> None:
+    """The simulated devices instrument serves the devices in a child process
+    while it is open, acquires triggered values from both, then stops them."""
+    psutil = pytest.importorskip("psutil")
+    instrument = SimulatedTangoInstrument()
+    try:
+        instrument.open()
+        devices = instrument.devices
+        pid, folder = devices.pid, devices.profiles["camera"].parent
+        assert psutil.pid_exists(pid) and folder.is_dir()
+        (signal,) = instrument.acquire().objects
+        assert signal.xunit == "ns" and signal.yunit == "V"
+        source = get_experimental_source(signal)
+        assert source["details"]["trigger"]["synchronization"] == "time_stamp"
+        instrument.settings.device = "camera"
+        (image,) = instrument.acquire().objects
+        assert image.data.shape == simulation.CAMERA_SHAPE
+    finally:
+        instrument.close()
+    assert instrument.devices is None
+    assert not folder.exists()
+    assert not psutil.pid_exists(pid) or psutil.Process(pid).status() == "zombie"

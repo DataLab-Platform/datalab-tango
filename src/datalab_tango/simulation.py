@@ -6,6 +6,11 @@ simulated camera, and a device profile is written for each of them in the
 folder (default: current folder). Open these profiles in DataLab's TANGO
 instrument; stop the server with Ctrl+C.
 
+DataLab's **Simulated TANGO devices...** tool runs this module with the
+``--until-stdin-closes`` option (see :class:`datalab_tango.core.SimulatedDevices`):
+the profiles are then announced on a single line of the output, and the devices
+are served until the standard input is closed.
+
 When the DataLab characterization plugins are installed, the devices use
 their simulators (``datalab_pulse_characterization`` oscilloscope traces,
 ``datalab_camera_characterization`` sensor model); otherwise they generate
@@ -16,6 +21,7 @@ value it acquired, so that DataLab tells it apart from free-running ones.
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import threading
@@ -26,6 +32,8 @@ import numpy as np
 from tango import AttrQuality, DevState
 from tango.server import Device, attribute, command
 from tango.test_context import MultiDeviceTestContext
+
+from .core.simulated import READY_MARKER
 
 __all__ = ["SimulatedCamera", "SimulatedOscilloscope", "main"]
 
@@ -216,18 +224,34 @@ def write_profiles(folder: Path, scope_address: str, camera_address: str) -> lis
     return paths
 
 
-def main(folder: str = ".") -> None:
-    """Serve the simulated devices until interrupted, with their profiles."""
+def main(folder: str = ".", until_stdin_closes: bool = False) -> None:
+    """Serve the simulated devices with their profiles, until interrupted.
+
+    Args:
+        folder: folder where the device profiles are written
+        until_stdin_closes: serve until the standard input is closed (e.g. by
+         the process which started the simulation) instead of until Ctrl+C, and
+         announce the profiles on a single line starting with
+         :data:`~datalab_tango.core.simulated.READY_MARKER`
+    """
     devices = (
         {"class": SimulatedOscilloscope, "devices": [{"name": SCOPE_NAME}]},
         {"class": SimulatedCamera, "devices": [{"name": CAMERA_NAME}]},
     )
+    # The simulators take seconds to import: meanwhile, the device server starts
+    threading.Thread(target=_scope_trace, args=(0,), daemon=True).start()
     with MultiDeviceTestContext(devices, process=True, timeout=60.0) as context:
         paths = write_profiles(
             Path(folder),
             context.get_device_access(SCOPE_NAME),
             context.get_device_access(CAMERA_NAME),
         )
+        if until_stdin_closes:
+            profiles = {"oscilloscope": str(paths[0]), "camera": str(paths[1])}
+            print(READY_MARKER + json.dumps(profiles), flush=True)
+            for _line in sys.stdin:
+                pass
+            return
         print("Simulated devices running; profiles:")
         for path in paths:
             print(f"  {path.resolve()}")
@@ -239,5 +263,24 @@ def main(folder: str = ".") -> None:
             pass
 
 
+def parse_arguments(arguments: list[str]) -> argparse.Namespace:
+    """Return the command-line arguments of the simulation."""
+    parser = argparse.ArgumentParser(
+        prog="python -m datalab_tango.simulation",
+        description="Serve a simulated oscilloscope and a simulated camera "
+        "with TANGO, and write their device profiles",
+    )
+    parser.add_argument(
+        "folder", nargs="?", default=".", help="folder of the device profiles"
+    )
+    parser.add_argument(
+        "--until-stdin-closes",
+        action="store_true",
+        help="serve until the standard input is closed (used by DataLab)",
+    )
+    return parser.parse_args(arguments)
+
+
 if __name__ == "__main__":
-    main(*sys.argv[1:2])
+    _arguments = parse_arguments(sys.argv[1:])
+    main(_arguments.folder, _arguments.until_stdin_closes)

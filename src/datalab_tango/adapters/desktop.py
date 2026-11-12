@@ -5,9 +5,14 @@ from __future__ import annotations
 from datalab.plugins import PluginBase, PluginCapability, PluginInfo
 
 from .. import PLUGIN_DESCRIPTION, PLUGIN_ID, PLUGIN_NAME, __version__
-from ..instrument import TANGO_INSTRUMENT_TOOL, TangoInstrument
+from ..instrument import (
+    SIMULATED_DEVICES_TOOL,
+    TANGO_INSTRUMENT_TOOL,
+    SimulatedTangoInstrument,
+    TangoInstrument,
+)
 
-#: Icon of the plugin, its welcome tile and its instrument
+#: Icon of the plugin, its welcome tile and its instruments
 PLUGIN_ICON = "datalab_tango:icons/tango.svg"
 
 
@@ -23,11 +28,16 @@ class TangoPlugin(PluginBase):
         capabilities=(PluginCapability.APPLICATION,),
         documentation_url="https://github.com/DataLab-Platform/datalab-tango",
     )
-    TOOLS = (TANGO_INSTRUMENT_TOOL,)
+    # The simulated devices come first: they work without hardware
+    TOOLS = (SIMULATED_DEVICES_TOOL, TANGO_INSTRUMENT_TOOL)
 
     def tango_instrument(self) -> TangoInstrument:
         """Return a new TANGO instrument."""
         return TangoInstrument()
 
+    def simulated_tango_instrument(self) -> SimulatedTangoInstrument:
+        """Return a new instrument showing simulated TANGO devices."""
+        return SimulatedTangoInstrument()
+
     def create_actions(self) -> None:
-        """The instrument is listed by DataLab with the plugin tools."""
+        """The instruments are listed by DataLab with the plugin tools."""
