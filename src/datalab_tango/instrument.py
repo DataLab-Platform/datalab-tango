@@ -13,6 +13,10 @@ command returns it (``"returns": "time_stamp"`` in the profile): other values
 received meanwhile are ignored. Otherwise, the first value received after the
 command started is taken, which may not be the triggered one (free-running
 device, value delivered late); the origin of the acquired object tells which.
+
+The simulated devices instrument works the same way, with the simulated
+oscilloscope and camera served by a child process while its window is open: the
+plugin can be tried without hardware nor command line.
 """
 
 from __future__ import annotations
@@ -35,17 +39,35 @@ from .core import (
     DeviceBackend,
     PyTangoBackend,
     Reading,
+    SimulatedDevices,
     load_profile,
     reading_to_object,
 )
 
-__all__ = ["TANGO_INSTRUMENT_TOOL", "TangoInstrument", "TangoInstrumentSettings"]
+__all__ = [
+    "SIMULATED_DEVICES_TOOL",
+    "TANGO_INSTRUMENT_TOOL",
+    "SimulatedTangoInstrument",
+    "SimulatedTangoSettings",
+    "TangoInstrument",
+    "TangoInstrumentSettings",
+]
 
 TANGO_INSTRUMENT_TOOL = PluginTool(
     id="tango-instrument",
     title="TANGO instrument...",
     description="Show a TANGO device attribute live and acquire its values",
     instrument="tango_instrument",
+)
+
+SIMULATED_DEVICES_TOOL = PluginTool(
+    id="tango-simulation",
+    title="Simulated TANGO devices...",
+    description=(
+        "Try without hardware: a simulated oscilloscope and camera, served by a "
+        "TANGO device server started on this computer while the window is open"
+    ),
+    instrument="simulated_tango_instrument",
 )
 
 #: Longest wait for a first value before a preview reports that none arrived (s)
@@ -96,11 +118,37 @@ class TangoInstrumentSettings(gds.DataSet):
     timeout = gds.FloatItem("Timeout", default=10.0, min=0.1, unit="s")
 
 
+SIMULATED_DEVICES = (
+    ("oscilloscope", "Oscilloscope (laser pulse on CH1)"),
+    ("camera", "Camera (spot image)"),
+)
+_SIMULATED_MODE = gds.ValueProp("trigger")
+
+
+class SimulatedTangoSettings(gds.DataSet):
+    """Simulated TANGO devices"""
+
+    device = gds.ChoiceItem(
+        "Simulated device",
+        SIMULATED_DEVICES,
+        default="oscilloscope",
+        help="Device served by the simulated TANGO device server",
+    )
+    mode = gds.ChoiceItem("Acquisition", MODES, default="trigger").set_prop(
+        "display", store=_SIMULATED_MODE
+    )
+    count = gds.IntItem("Number of values", default=10, min=1, max=100_000).set_prop(
+        "display", active=gds.FuncProp(_SIMULATED_MODE, lambda mode: mode == "series")
+    )
+    timeout = gds.FloatItem("Timeout", default=10.0, min=0.1, unit="s")
+
+
 class TangoInstrument(PluginInstrument):
     """TANGO device attribute, received while the instrument window is open.
 
     Args:
         backend_factory: returns a new device connection (tests use a fake one)
+        settings: instrument settings (default: device profile and attribute)
     """
 
     live_interval_ms = 200
@@ -109,9 +157,11 @@ class TangoInstrument(PluginInstrument):
     new_group = False
 
     def __init__(
-        self, backend_factory: Callable[[], DeviceBackend] = PyTangoBackend
+        self,
+        backend_factory: Callable[[], DeviceBackend] = PyTangoBackend,
+        settings: gds.DataSet | None = None,
     ) -> None:
-        super().__init__(TangoInstrumentSettings())
+        super().__init__(TangoInstrumentSettings() if settings is None else settings)
         self._backend_factory = backend_factory
         self._session: AttributeSession | None = None
         self._session_key: tuple[str, str] | None = None
@@ -124,16 +174,24 @@ class TangoInstrument(PluginInstrument):
 
     def close(self) -> None:
         """Stop receiving values and disconnect."""
+        self._disconnect()
+
+    def _disconnect(self) -> None:
+        """Stop receiving values and disconnect, if connected."""
         if self._session is not None:
             session, self._session, self._session_key = self._session, None, None
             session.stop()
 
+    def _target(self) -> tuple[str, str]:
+        """Return the profile file and the attribute set by the settings."""
+        return (str(self.settings.profile or ""), str(self.settings.attribute or ""))
+
     def _get_session(self) -> AttributeSession:
         """Return the session matching the settings, (re)connecting if needed."""
-        key = (str(self.settings.profile or ""), str(self.settings.attribute or ""))
+        key = self._target()
         if self._session is not None and key == self._session_key:
             return self._session
-        self.close()
+        self._disconnect()
         if not key[0]:
             raise ValueError("Select a device profile")
         profile = load_profile(key[0])
@@ -254,3 +312,57 @@ class TangoInstrument(PluginInstrument):
             (reading,) = self._next(session, after, 1, timeout)
             synchronization = "first_after_command"
         return reading, {"command": trigger.command, "synchronization": synchronization}
+
+
+class SimulatedTangoInstrument(TangoInstrument):
+    """Simulated TANGO devices, served while the instrument window is open.
+
+    Opening the instrument starts a simulated oscilloscope and camera in a child
+    process (see :class:`~datalab_tango.core.SimulatedDevices`), then connects to
+    the selected one through TANGO, as to a real device; closing it disconnects,
+    then stops the child process. Devices which stopped unexpectedly are started
+    again by the next call.
+
+    Args:
+        backend_factory: returns a new device connection (tests use a fake one)
+        devices_factory: returns new simulated devices, not started yet (tests use
+         fake ones)
+    """
+
+    def __init__(
+        self,
+        backend_factory: Callable[[], DeviceBackend] = PyTangoBackend,
+        devices_factory: Callable[[], SimulatedDevices] = SimulatedDevices,
+    ) -> None:
+        super().__init__(backend_factory, SimulatedTangoSettings())
+        self._devices_factory = devices_factory
+        self._devices: SimulatedDevices | None = None
+
+    @property
+    def devices(self) -> SimulatedDevices | None:
+        """Simulated devices, once started by the instrument (None once closed)"""
+        return self._devices
+
+    def open(self) -> None:
+        """Start the simulated devices, then connect to the selected one."""
+        self._get_session()
+
+    def close(self) -> None:
+        """Disconnect, then stop the simulated devices."""
+        try:
+            self._disconnect()
+        finally:
+            devices, self._devices = self._devices, None
+            if devices is not None:
+                devices.stop()
+
+    def _target(self) -> tuple[str, str]:
+        """Return the profile of the selected device, starting the devices if
+        needed, and its first attribute."""
+        if self._devices is None or not self._devices.is_running():
+            self._disconnect()
+            if self._devices is not None:
+                self._devices.stop()
+            self._devices = self._devices_factory()
+            self._devices.start()
+        return str(self._devices.profiles[self.settings.device]), ""

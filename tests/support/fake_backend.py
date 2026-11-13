@@ -114,3 +114,45 @@ class FakeBackend(DeviceBackend):
 
     def disconnect(self) -> None:
         self.device.connections -= 1
+
+
+class FakeSimulatedDevices:
+    """Simulated devices served without child process: two fake profiles.
+
+    Args:
+        folder: folder of the profiles
+        log: start and stop calls
+        failures: number of starts failing before one succeeds
+    """
+
+    def __init__(self, folder: Path, log: list[str], failures: int = 0) -> None:
+        self.folder = folder
+        self.log = log
+        self.failures = failures
+        self.profiles: dict[str, Path] = {}
+        self.running = False
+
+    def start(self) -> dict[str, Path]:
+        self.log.append("start")
+        if self.failures:
+            self.failures -= 1
+            raise ValueError("Simulated devices did not start within 90 s")
+        self.profiles = {
+            "oscilloscope": Path(
+                write_profile(
+                    self.folder / "scope.json",
+                    name="Simulated scope",
+                    attributes=[{"name": "spectrum", "kind": "signal"}],
+                )
+            ),
+            "camera": Path(write_profile(self.folder / "camera.json")),
+        }
+        self.running = True
+        return self.profiles
+
+    def is_running(self) -> bool:
+        return self.running
+
+    def stop(self) -> None:
+        self.log.append("stop")
+        self.running = False

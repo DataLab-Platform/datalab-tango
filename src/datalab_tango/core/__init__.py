@@ -15,6 +15,7 @@ from .profile import (
 )
 from .reception import FrameBuffer, PollingReceiver, Reading, stamp_matches
 from .session import AttributeSession
+from .simulated import SimulatedDevices
 
 __all__ = [
     "TRIGGER_RETURNS",
@@ -29,6 +30,7 @@ __all__ = [
     "PyTangoBackend",
     "Reading",
     "Reception",
+    "SimulatedDevices",
     "TriggerProfile",
     "load_profile",
     "profile_from_dict",

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2026-11-13
+
+Requirements are unchanged: Python 3.10 or later, DataLab 1.4 or later and PyTango 9.5.1 or later.
+
+- **Simulated TANGO devices** tool: the simulated oscilloscope and camera, served from DataLab without command line while the instrument window is open, in a child process on a free port; it stops when the window closes (including on plugin reload and DataLab exit), or by itself if DataLab ends abruptly. The tool comes first in the Applications panel and in the plugin's submenu of the **Plugins** menu. Not available in standalone DataLab, which is not qualified.
+- Simulated devices start faster: their simulators are imported while the device server starts.
+- The README tells how to install the plugin from the [DataLab plugin catalog](https://datalab-platform.com/plugins/), after installing PyTango in DataLab's Python environment.
+- Releases are published from a draft release prepared by the CI, with the wheel, its `SHA256SUMS` and its build provenance attestation (see `RELEASING.md`).
+
 ## [0.1.0] - 2026-11-07
 
 Python 3.10 or later and PyTango 9.5.1 or later are required. PyTango 9.5.0 is excluded because its Windows wheel can be installed with NumPy 2 even though its native extension is incompatible.
